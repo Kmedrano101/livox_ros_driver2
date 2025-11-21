@@ -200,4 +200,3 @@ To use this configuration, follow these steps:
 
 ---
 
-**Happy LiDAR Scanning!** 🎉📡
