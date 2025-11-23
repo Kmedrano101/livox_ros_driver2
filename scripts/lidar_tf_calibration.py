@@ -214,15 +214,17 @@ class LidarTFCalibration(Node):
 
         return t
 
-    def transform_point_cloud(self, cloud_msg, roll_deg=0.0, pitch_deg=0.0, yaw_deg=0.0):
+    def transform_point_cloud(self, cloud_msg, roll_deg=0.0, pitch_deg=0.0, yaw_deg=0.0,
+                             trans_x=0.0, trans_y=0.0, trans_z=0.0):
         """
-        Transform a point cloud by applying rotation.
+        Transform a point cloud by applying translation and rotation.
 
         Args:
             cloud_msg: Input PointCloud2 message
             roll_deg: Roll rotation in degrees
             pitch_deg: Pitch rotation in degrees
             yaw_deg: Yaw rotation in degrees
+            trans_x, trans_y, trans_z: Translation in meters (applied before rotation)
 
         Returns:
             Transformed PointCloud2 message
@@ -259,8 +261,12 @@ class LidarTFCalibration(Node):
         # Convert to numpy array for transformation
         points = np.array(points_list)
 
+        # Apply translation first (undo driver translation)
+        translation = np.array([trans_x, trans_y, trans_z])
+        points_translated = points + translation
+
         # Apply rotation: p_new = R * p_old
-        transformed_points = np.dot(points, R.T)
+        transformed_points = np.dot(points_translated, R.T)
 
         # Create new point cloud message
         transformed_cloud = PointCloud2()
@@ -361,15 +367,18 @@ class LidarTFCalibration(Node):
                 self.get_logger().info(f'L2 BEFORE transform - First point: x={first_points[0][0]:.3f}, y={first_points[0][1]:.3f}, z={first_points[0][2]:.3f}',
                                       throttle_duration_sec=2.0)
 
-            # Driver extrinsic: roll=-90°, yaw=180°
-            # Inverse: yaw=-180° (or +180°), roll=+90°
-            # Apply in reverse order: first inverse yaw, then inverse roll
+            # Driver extrinsic: roll=-90°, yaw=180°, translation=[0, -110mm, 0]
+            # To undo: first undo translation [0, -0.110, 0] by adding [0, +0.110, 0]
+            # Then undo rotation: yaw=-180° (or +180°), roll=+90°
 
             transformed_cloud = self.transform_point_cloud(
                 msg,
                 roll_deg=90.0,   # Inverse of driver's -90°
                 pitch_deg=0.0,
-                yaw_deg=-180.0   # Inverse of driver's +180°
+                yaw_deg=-180.0,  # Inverse of driver's +180°
+                trans_x=0.0,     # Undo driver translation
+                trans_y=0.110,   # Undo driver's -110mm offset
+                trans_z=0.0
             )
 
             # DEBUG: Log after transformation
