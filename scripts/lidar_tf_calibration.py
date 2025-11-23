@@ -370,18 +370,16 @@ class LidarTFCalibration(Node):
                                       throttle_duration_sec=2.0)
 
             # Driver extrinsic: roll=+90°, yaw=180°, translation=[0, -110mm, 0]
-            # Driver applies: p_out = R * p_sensor + t
-            # To undo: p_sensor = R^(-1) * (p_out - t)
-            # Step 1: Subtract driver translation [0, -0.110, 0]
-            # Step 2: Apply inverse rotation (roll=-90°, yaw=-180°)
+            # Testing: Try undoing only roll, not yaw (same as L1 approach)
+            # The TF will handle the yaw transform for visualization
 
             transformed_cloud = self.transform_point_cloud(
                 msg,
                 roll_deg=-90.0,   # Inverse of driver's +90°
                 pitch_deg=0.0,
-                yaw_deg=-180.0,   # Inverse of driver's +180°
-                trans_x=0.0,      # Driver's translation to subtract
-                trans_y=-0.110,   # Driver's -110mm offset to subtract
+                yaw_deg=0.0,      # Don't undo yaw - let TF handle it
+                trans_x=0.0,      # No translation undo for now
+                trans_y=0.0,      # No translation undo for now
                 trans_z=0.0
             )
 

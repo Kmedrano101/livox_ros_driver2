@@ -16,7 +16,7 @@ cmdline_bd_code = 'livox0000000001'
 
 cur_path = os.path.split(os.path.realpath(__file__))[0] + '/'
 cur_config_path = cur_path + '../config'
-user_config_path = os.path.join(cur_config_path, 'mid360_netconfigs.json')
+user_config_path = os.path.join(cur_config_path, 'mid360_L2.json')
 ################### user configure parameters for ros2 end #####################
 
 livox_ros2_params = [
