@@ -57,6 +57,10 @@ This will:
   - x: 0, y: 110 (mm), z: 0
 - **Python Inverse Transform**: roll: +90.0° (to undo driver transform)
 - **Status**: ✅ Verified in RViz - pose and orientation match physical sensor
+- **Calibration Test Results**:
+  - BEFORE inverse transform: x=-1.028, y=0.122, z=-0.498 (driver-transformed coordinates)
+  - AFTER inverse transform: x=-0.107, y=0.494, z=0.416 (sensor frame coordinates)
+  - Transform successfully reverts driver extrinsics, ready for TF visualization
 
 ### LiDAR 2 (L2) - Right Sensor
 - **Position**: [0.0, -0.11, 0.0] meters
