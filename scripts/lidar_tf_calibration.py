@@ -348,8 +348,8 @@ class LidarTFCalibration(Node):
             # Republish
             self.l1_pub.publish(transformed_cloud)
 
-         except Exception as e:
-             self.get_logger().error(f'L1 transformation error: {str(e)}')
+        except Exception as e:
+            self.get_logger().error(f'L1 transformation error: {str(e)}')
 
     def l2_callback(self, msg):
         """
