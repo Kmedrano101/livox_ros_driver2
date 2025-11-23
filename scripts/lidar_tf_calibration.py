@@ -48,7 +48,9 @@ class LidarTFCalibration(Node):
         self.declare_parameter('l2_frame', 'lidar_L2')
 
         # Declare parameters for lidar topics
-        self.declare_parameter('l1_topic', '/livox/lidar_192_168_1_10')
+        # When using single_mid360.launch.py with multi_topic=0, topic is '/livox/lidar'
+        # When using multiple_lidars.launch.py with multi_topic=1, topics are '/livox/lidar_192_168_1_XX'
+        self.declare_parameter('l1_topic', '/livox/lidar')
         self.declare_parameter('l2_topic', '/livox/lidar_192_168_1_18')
 
         # L1 (Left sensor) extrinsics - facing forward
