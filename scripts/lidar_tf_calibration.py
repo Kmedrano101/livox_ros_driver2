@@ -20,8 +20,11 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
 from sensor_msgs.msg import PointCloud2
-from tf2_ros import StaticTransformBroadcaster
+from tf2_ros import StaticTransformBroadcaster, TransformException, Buffer, TransformListener
 import math
+import numpy as np
+from sensor_msgs_py import point_cloud2
+import struct
 
 
 class LidarTFCalibration(Node):
@@ -34,6 +37,10 @@ class LidarTFCalibration(Node):
 
         # Create static transform broadcaster
         self.tf_static_broadcaster = StaticTransformBroadcaster(self)
+
+        # Create TF buffer and listener for transformations
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # Declare parameters for easy calibration adjustment
         self.declare_parameter('base_frame', 'base_link')
@@ -202,47 +209,143 @@ class LidarTFCalibration(Node):
 
         return t
 
+    def transform_point_cloud(self, cloud_msg, roll_deg=0.0, pitch_deg=0.0, yaw_deg=0.0):
+        """
+        Transform a point cloud by applying rotation.
+
+        Args:
+            cloud_msg: Input PointCloud2 message
+            roll_deg: Roll rotation in degrees
+            pitch_deg: Pitch rotation in degrees
+            yaw_deg: Yaw rotation in degrees
+
+        Returns:
+            Transformed PointCloud2 message
+        """
+        # Convert angles to radians
+        roll = math.radians(roll_deg)
+        pitch = math.radians(pitch_deg)
+        yaw = math.radians(yaw_deg)
+
+        # Create rotation matrix (ZYX convention)
+        # Rz(yaw) * Ry(pitch) * Rx(roll)
+        cy = math.cos(yaw)
+        sy = math.sin(yaw)
+        cp = math.cos(pitch)
+        sp = math.sin(pitch)
+        cr = math.cos(roll)
+        sr = math.sin(roll)
+
+        # Combined rotation matrix
+        R = np.array([
+            [cy*cp, cy*sp*sr - sy*cr, cy*sp*cr + sy*sr],
+            [sy*cp, sy*sp*sr + cy*cr, sy*sp*cr - cy*sr],
+            [-sp,   cp*sr,            cp*cr          ]
+        ])
+
+        # Read points from cloud
+        points_list = []
+        for point in point_cloud2.read_points(cloud_msg, field_names=("x", "y", "z"), skip_nans=True):
+            points_list.append([point[0], point[1], point[2]])
+
+        if len(points_list) == 0:
+            return cloud_msg  # Return original if no valid points
+
+        # Convert to numpy array for transformation
+        points = np.array(points_list)
+
+        # Apply rotation: p_new = R * p_old
+        transformed_points = np.dot(points, R.T)
+
+        # Create new point cloud message
+        transformed_cloud = PointCloud2()
+        transformed_cloud.header = cloud_msg.header
+        transformed_cloud.height = cloud_msg.height
+        transformed_cloud.width = cloud_msg.width
+        transformed_cloud.fields = cloud_msg.fields
+        transformed_cloud.is_bigendian = cloud_msg.is_bigendian
+        transformed_cloud.point_step = cloud_msg.point_step
+        transformed_cloud.row_step = cloud_msg.row_step
+        transformed_cloud.is_dense = cloud_msg.is_dense
+
+        # Read all point data including additional fields (intensity, etc.)
+        all_points = []
+        field_names = [field.name for field in cloud_msg.fields]
+
+        for i, point_data in enumerate(point_cloud2.read_points(cloud_msg, field_names=field_names, skip_nans=False)):
+            if i < len(transformed_points):
+                # Create new point with transformed xyz and original other fields
+                new_point = list(point_data)
+                new_point[0] = transformed_points[i, 0]  # x
+                new_point[1] = transformed_points[i, 1]  # y
+                new_point[2] = transformed_points[i, 2]  # z
+                all_points.append(tuple(new_point))
+            else:
+                all_points.append(point_data)
+
+        # Create new point cloud with transformed points
+        transformed_cloud = point_cloud2.create_cloud(transformed_cloud.header, cloud_msg.fields, all_points)
+
+        return transformed_cloud
+
     def l1_callback(self, msg):
         """
         Callback for L1 lidar point cloud.
-        Republishes with correct frame_id to match TF tree.
+        The Livox driver has already applied extrinsic transformation (roll=-90°).
+        We need to apply the inverse transformation to get back to sensor frame,
+        then publish with frame_id=lidar_L1 so RViz/TF can apply our TF transform.
         """
-        # Create new message with corrected frame_id
-        corrected_msg = PointCloud2()
-        corrected_msg.header = msg.header
-        corrected_msg.header.frame_id = self.l1_frame
-        corrected_msg.height = msg.height
-        corrected_msg.width = msg.width
-        corrected_msg.fields = msg.fields
-        corrected_msg.is_bigendian = msg.is_bigendian
-        corrected_msg.point_step = msg.point_step
-        corrected_msg.row_step = msg.row_step
-        corrected_msg.data = msg.data
-        corrected_msg.is_dense = msg.is_dense
+        try:
+            # The driver applies: rotation by extrinsics, so points are transformed
+            # We need to apply INVERSE of driver's extrinsic to get back to sensor frame
+            # Driver extrinsic: roll=-90° (rotates around X by -90°)
+            # Inverse: roll=+90°
 
-        # Republish with correct frame_id
-        self.l1_pub.publish(corrected_msg)
+            transformed_cloud = self.transform_point_cloud(
+                msg,
+                roll_deg=90.0,  # Inverse of driver's -90°
+                pitch_deg=0.0,
+                yaw_deg=0.0
+            )
+
+            # Set frame_id to match TF tree
+            transformed_cloud.header.frame_id = self.l1_frame
+            transformed_cloud.header.stamp = msg.header.stamp
+
+            # Republish
+            self.l1_pub.publish(transformed_cloud)
+
+        except Exception as e:
+            self.get_logger().error(f'L1 transformation error: {str(e)}')
 
     def l2_callback(self, msg):
         """
         Callback for L2 lidar point cloud.
-        Republishes with correct frame_id to match TF tree.
+        The Livox driver has already applied extrinsic transformation (roll=-90°, yaw=180°).
+        We need to apply the inverse transformation to get back to sensor frame,
+        then publish with frame_id=lidar_L2 so RViz/TF can apply our TF transform.
         """
-        # Create new message with corrected frame_id
-        corrected_msg = PointCloud2()
-        corrected_msg.header = msg.header
-        corrected_msg.header.frame_id = self.l2_frame
-        corrected_msg.height = msg.height
-        corrected_msg.width = msg.width
-        corrected_msg.fields = msg.fields
-        corrected_msg.is_bigendian = msg.is_bigendian
-        corrected_msg.point_step = msg.point_step
-        corrected_msg.row_step = msg.row_step
-        corrected_msg.data = msg.data
-        corrected_msg.is_dense = msg.is_dense
+        try:
+            # Driver extrinsic: roll=-90°, yaw=180°
+            # Inverse: yaw=-180° (or +180°), roll=+90°
+            # Apply in reverse order: first inverse yaw, then inverse roll
 
-        # Republish with correct frame_id
-        self.l2_pub.publish(corrected_msg)
+            transformed_cloud = self.transform_point_cloud(
+                msg,
+                roll_deg=90.0,   # Inverse of driver's -90°
+                pitch_deg=0.0,
+                yaw_deg=-180.0   # Inverse of driver's +180°
+            )
+
+            # Set frame_id to match TF tree
+            transformed_cloud.header.frame_id = self.l2_frame
+            transformed_cloud.header.stamp = msg.header.stamp
+
+            # Republish
+            self.l2_pub.publish(transformed_cloud)
+
+        except Exception as e:
+            self.get_logger().error(f'L2 transformation error: {str(e)}')
 
 
 def main(args=None):
