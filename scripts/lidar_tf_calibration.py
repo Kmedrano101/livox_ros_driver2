@@ -89,17 +89,17 @@ class LidarTFCalibration(Node):
             yaw=self.get_parameter('l1_yaw').value
         ))
 
-        # Transform: base_link -> lidar_L2
-        transforms.append(self.create_transform(
-            parent_frame=base_frame,
-            child_frame=self.l2_frame,
-            x=self.get_parameter('l2_x').value,
-            y=self.get_parameter('l2_y').value,
-            z=self.get_parameter('l2_z').value,
-            roll=self.get_parameter('l2_roll').value,
-            pitch=self.get_parameter('l2_pitch').value,
-            yaw=self.get_parameter('l2_yaw').value
-        ))
+        # Transform: base_link -> lidar_L2 (COMMENTED OUT FOR DEBUGGING)
+        # transforms.append(self.create_transform(
+        #     parent_frame=base_frame,
+        #     child_frame=self.l2_frame,
+        #     x=self.get_parameter('l2_x').value,
+        #     y=self.get_parameter('l2_y').value,
+        #     z=self.get_parameter('l2_z').value,
+        #     roll=self.get_parameter('l2_roll').value,
+        #     pitch=self.get_parameter('l2_pitch').value,
+        #     yaw=self.get_parameter('l2_yaw').value
+        # ))
 
         # Broadcast all transforms
         self.tf_static_broadcaster.sendTransform(transforms)
@@ -112,12 +112,13 @@ class LidarTFCalibration(Node):
             10
         )
 
-        self.l2_sub = self.create_subscription(
-            PointCloud2,
-            l2_topic,
-            self.l2_callback,
-            10
-        )
+        # COMMENTED OUT FOR DEBUGGING - Focus on L1 first
+        # self.l2_sub = self.create_subscription(
+        #     PointCloud2,
+        #     l2_topic,
+        #     self.l2_callback,
+        #     10
+        # )
 
         # Create publishers for republished point clouds with correct frame_id
         self.l1_pub = self.create_publisher(
@@ -126,11 +127,12 @@ class LidarTFCalibration(Node):
             10
         )
 
-        self.l2_pub = self.create_publisher(
-            PointCloud2,
-            '/lidar_L2/pointcloud',
-            10
-        )
+        # COMMENTED OUT FOR DEBUGGING - Focus on L1 first
+        # self.l2_pub = self.create_publisher(
+        #     PointCloud2,
+        #     '/lidar_L2/pointcloud',
+        #     10
+        # )
 
         self.get_logger().info('=' * 60)
         self.get_logger().info('LiDAR TF Calibration Node Started')
@@ -147,22 +149,24 @@ class LidarTFCalibration(Node):
         self.get_logger().info(f'  Rotation: Roll={self.get_parameter("l1_roll").value}°, '
                               f'Pitch={self.get_parameter("l1_pitch").value}°, '
                               f'Yaw={self.get_parameter("l1_yaw").value}°')
-        self.get_logger().info('')
-        self.get_logger().info('L2 (Right sensor - facing backward):')
-        self.get_logger().info(f'  Frame: {self.l2_frame}')
-        self.get_logger().info(f'  Input Topic: {l2_topic}')
-        self.get_logger().info(f'  Output Topic: /lidar_L2/pointcloud')
-        self.get_logger().info(f'  Position: [{self.get_parameter("l2_x").value:.3f}, '
-                              f'{self.get_parameter("l2_y").value:.3f}, '
-                              f'{self.get_parameter("l2_z").value:.3f}] m')
-        self.get_logger().info(f'  Rotation: Roll={self.get_parameter("l2_roll").value}°, '
-                              f'Pitch={self.get_parameter("l2_pitch").value}°, '
-                              f'Yaw={self.get_parameter("l2_yaw").value}°')
+        # self.get_logger().info('')
+        # self.get_logger().info('L2 (Right sensor - facing backward):')
+        # self.get_logger().info(f'  Frame: {self.l2_frame}')
+        # self.get_logger().info(f'  Input Topic: {l2_topic}')
+        # self.get_logger().info(f'  Output Topic: /lidar_L2/pointcloud')
+        # self.get_logger().info(f'  Position: [{self.get_parameter("l2_x").value:.3f}, '
+        #                       f'{self.get_parameter("l2_y").value:.3f}, '
+        #                       f'{self.get_parameter("l2_z").value:.3f}] m')
+        # self.get_logger().info(f'  Rotation: Roll={self.get_parameter("l2_roll").value}°, '
+        #                       f'Pitch={self.get_parameter("l2_pitch").value}°, '
+        #                       f'Yaw={self.get_parameter("l2_yaw").value}°')
+        self.get_logger().info('=' * 60)
+        self.get_logger().info('*** DEBUG MODE: L2 COMMENTED OUT - TESTING L1 ONLY ***')
         self.get_logger().info('=' * 60)
         self.get_logger().info('Transforms published. Visualize in RViz with:')
         self.get_logger().info('  - Fixed Frame: base_link')
         self.get_logger().info('  - Add TF display to see coordinate frames')
-        self.get_logger().info('  - Subscribe to /lidar_L1/pointcloud and /lidar_L2/pointcloud')
+        self.get_logger().info('  - Subscribe to /lidar_L1/pointcloud')
         self.get_logger().info('=' * 60)
 
     def create_transform(self, parent_frame, child_frame, x, y, z, roll, pitch, yaw):
@@ -296,6 +300,16 @@ class LidarTFCalibration(Node):
         then publish with frame_id=lidar_L1 so RViz/TF can apply our TF transform.
         """
         try:
+            # DEBUG: Log original frame_id and first few points
+            self.get_logger().info(f'L1 INPUT - frame_id: {msg.header.frame_id}, points: {msg.width * msg.height}',
+                                   throttle_duration_sec=2.0)
+
+            # Read first point for debugging
+            first_points = list(point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
+            if len(first_points) > 0:
+                self.get_logger().info(f'L1 BEFORE transform - First point: x={first_points[0][0]:.3f}, y={first_points[0][1]:.3f}, z={first_points[0][2]:.3f}',
+                                      throttle_duration_sec=2.0)
+
             # The driver applies: rotation by extrinsics, so points are transformed
             # We need to apply INVERSE of driver's extrinsic to get back to sensor frame
             # Driver extrinsic: roll=-90° (rotates around X by -90°)
@@ -308,9 +322,18 @@ class LidarTFCalibration(Node):
                 yaw_deg=0.0
             )
 
+            # DEBUG: Log after transformation
+            after_points = list(point_cloud2.read_points(transformed_cloud, field_names=("x", "y", "z"), skip_nans=True))
+            if len(after_points) > 0:
+                self.get_logger().info(f'L1 AFTER transform - First point: x={after_points[0][0]:.3f}, y={after_points[0][1]:.3f}, z={after_points[0][2]:.3f}',
+                                      throttle_duration_sec=2.0)
+
             # Set frame_id to match TF tree
             transformed_cloud.header.frame_id = self.l1_frame
             transformed_cloud.header.stamp = msg.header.stamp
+
+            self.get_logger().info(f'L1 OUTPUT - frame_id: {transformed_cloud.header.frame_id}',
+                                  throttle_duration_sec=2.0)
 
             # Republish
             self.l1_pub.publish(transformed_cloud)
@@ -318,34 +341,35 @@ class LidarTFCalibration(Node):
         except Exception as e:
             self.get_logger().error(f'L1 transformation error: {str(e)}')
 
-    def l2_callback(self, msg):
-        """
-        Callback for L2 lidar point cloud.
-        The Livox driver has already applied extrinsic transformation (roll=-90°, yaw=180°).
-        We need to apply the inverse transformation to get back to sensor frame,
-        then publish with frame_id=lidar_L2 so RViz/TF can apply our TF transform.
-        """
-        try:
-            # Driver extrinsic: roll=-90°, yaw=180°
-            # Inverse: yaw=-180° (or +180°), roll=+90°
-            # Apply in reverse order: first inverse yaw, then inverse roll
+    # COMMENTED OUT FOR DEBUGGING - Focus on L1 first
+    # def l2_callback(self, msg):
+    #     """
+    #     Callback for L2 lidar point cloud.
+    #     The Livox driver has already applied extrinsic transformation (roll=-90°, yaw=180°).
+    #     We need to apply the inverse transformation to get back to sensor frame,
+    #     then publish with frame_id=lidar_L2 so RViz/TF can apply our TF transform.
+    #     """
+    #     try:
+    #         # Driver extrinsic: roll=-90°, yaw=180°
+    #         # Inverse: yaw=-180° (or +180°), roll=+90°
+    #         # Apply in reverse order: first inverse yaw, then inverse roll
 
-            transformed_cloud = self.transform_point_cloud(
-                msg,
-                roll_deg=90.0,   # Inverse of driver's -90°
-                pitch_deg=0.0,
-                yaw_deg=-180.0   # Inverse of driver's +180°
-            )
+    #         transformed_cloud = self.transform_point_cloud(
+    #             msg,
+    #             roll_deg=90.0,   # Inverse of driver's -90°
+    #             pitch_deg=0.0,
+    #             yaw_deg=-180.0   # Inverse of driver's +180°
+    #         )
 
-            # Set frame_id to match TF tree
-            transformed_cloud.header.frame_id = self.l2_frame
-            transformed_cloud.header.stamp = msg.header.stamp
+    #         # Set frame_id to match TF tree
+    #         transformed_cloud.header.frame_id = self.l2_frame
+    #         transformed_cloud.header.stamp = msg.header.stamp
 
-            # Republish
-            self.l2_pub.publish(transformed_cloud)
+    #         # Republish
+    #         self.l2_pub.publish(transformed_cloud)
 
-        except Exception as e:
-            self.get_logger().error(f'L2 transformation error: {str(e)}')
+    #     except Exception as e:
+    #         self.get_logger().error(f'L2 transformation error: {str(e)}')
 
 
 def main(args=None):
