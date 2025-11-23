@@ -44,7 +44,7 @@ This will:
 - **Position**: [0.0, 0.11, 0.0] meters
   - 11cm to the left (Y+)
 - **Orientation**:
-  - Roll: 90° (standard Livox mounting)
+  - Roll: -90° (Z-axis points LEFT/outward, per MID-360 spec)
   - Pitch: 0°
   - Yaw: 0° (facing forward)
 - **IP**: 192.168.1.10
@@ -54,7 +54,7 @@ This will:
 - **Position**: [0.0, -0.11, 0.0] meters
   - 11cm to the right (Y-)
 - **Orientation**:
-  - Roll: 90° (standard Livox mounting)
+  - Roll: -90° (Z-axis points RIGHT/outward, per MID-360 spec)
   - Pitch: 0°
   - Yaw: 180° (facing backward)
 - **IP**: 192.168.1.18

@@ -35,7 +35,7 @@ def generate_launch_description():
     l1_x_arg = DeclareLaunchArgument('l1_x', default_value='0.0')
     l1_y_arg = DeclareLaunchArgument('l1_y', default_value='0.11')
     l1_z_arg = DeclareLaunchArgument('l1_z', default_value='0.0')
-    l1_roll_arg = DeclareLaunchArgument('l1_roll', default_value='90.0')
+    l1_roll_arg = DeclareLaunchArgument('l1_roll', default_value='-90.0')
     l1_pitch_arg = DeclareLaunchArgument('l1_pitch', default_value='0.0')
     l1_yaw_arg = DeclareLaunchArgument('l1_yaw', default_value='0.0')
 
@@ -43,7 +43,7 @@ def generate_launch_description():
     l2_x_arg = DeclareLaunchArgument('l2_x', default_value='0.0')
     l2_y_arg = DeclareLaunchArgument('l2_y', default_value='-0.11')
     l2_z_arg = DeclareLaunchArgument('l2_z', default_value='0.0')
-    l2_roll_arg = DeclareLaunchArgument('l2_roll', default_value='90.0')
+    l2_roll_arg = DeclareLaunchArgument('l2_roll', default_value='-90.0')
     l2_pitch_arg = DeclareLaunchArgument('l2_pitch', default_value='0.0')
     l2_yaw_arg = DeclareLaunchArgument('l2_yaw', default_value='180.0')
 

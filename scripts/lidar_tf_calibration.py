@@ -40,7 +40,7 @@ class LidarTFCalibration(Node):
         self.declare_parameter('l1_x', 0.0)      # meters
         self.declare_parameter('l1_y', 0.11)     # 11cm to the left
         self.declare_parameter('l1_z', 0.0)      # meters
-        self.declare_parameter('l1_roll', 90.0)  # degrees
+        self.declare_parameter('l1_roll', -90.0) # degrees (Z-axis points LEFT/outward)
         self.declare_parameter('l1_pitch', 0.0)  # degrees
         self.declare_parameter('l1_yaw', 0.0)    # degrees (facing forward)
 
@@ -48,7 +48,7 @@ class LidarTFCalibration(Node):
         self.declare_parameter('l2_x', 0.0)      # meters
         self.declare_parameter('l2_y', -0.11)    # 11cm to the right
         self.declare_parameter('l2_z', 0.0)      # meters
-        self.declare_parameter('l2_roll', 90.0)  # degrees
+        self.declare_parameter('l2_roll', -90.0) # degrees (Z-axis points RIGHT/outward)
         self.declare_parameter('l2_pitch', 0.0)  # degrees
         self.declare_parameter('l2_yaw', 180.0)  # degrees (facing backward)
 
