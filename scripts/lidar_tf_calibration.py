@@ -305,48 +305,48 @@ class LidarTFCalibration(Node):
         We need to apply the inverse transformation to get back to sensor frame,
         then publish with frame_id=lidar_L1 so RViz/TF can apply our TF transform.
         """
-         try:
-             # DEBUG: Log original frame_id and first few points
-             self.get_logger().info(f'L1 INPUT - frame_id: {msg.header.frame_id}, points: {msg.width * msg.height}',
-                                    throttle_duration_sec=2.0)
-
-             # Read first point for debugging
-             first_points = list(point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
-             if len(first_points) > 0:
-                 self.get_logger().info(f'L1 BEFORE transform - First point: x={first_points[0][0]:.3f}, y={first_points[0][1]:.3f}, z={first_points[0][2]:.3f}',
-                                       throttle_duration_sec=2.0)
-
-             # Driver extrinsic: roll=-90°, yaw=0°, translation=[0, 110mm, 0]
-             # Driver applies: p_out = R * p_sensor + t
-             # To undo: p_sensor = R^(-1) * (p_out - t)
-             # Step 1: Subtract driver translation [0, 0.110, 0]
-             # Step 2: Apply inverse rotation (roll=+90°, yaw=0°)
-
-             transformed_cloud = self.transform_point_cloud(
-                 msg,
-                 roll_deg=90.0,    # Inverse of driver's -90°
-                 pitch_deg=0.0,
-                 yaw_deg=0.0,      # Inverse of driver's 0°
-                 trans_x=0.0,      # Driver's translation to subtract
-                 trans_y=0.110,    # Driver's 110mm offset to subtract
-                 trans_z=0.0
-             )
-
-             # DEBUG: Log after transformation
-             after_points = list(point_cloud2.read_points(transformed_cloud, field_names=("x", "y", "z"), skip_nans=True))
-             if len(after_points) > 0:
-                 self.get_logger().info(f'L1 AFTER transform - First point: x={after_points[0][0]:.3f}, y={after_points[0][1]:.3f}, z={after_points[0][2]:.3f}',
-                                       throttle_duration_sec=2.0)
-
-             # Set frame_id to match TF tree
-             transformed_cloud.header.frame_id = self.l1_frame
-             transformed_cloud.header.stamp = msg.header.stamp
-
-             self.get_logger().info(f'L1 OUTPUT - frame_id: {transformed_cloud.header.frame_id}',
+        try:
+            # DEBUG: Log original frame_id and first few points
+            self.get_logger().info(f'L1 INPUT - frame_id: {msg.header.frame_id}, points: {msg.width * msg.height}',
                                    throttle_duration_sec=2.0)
 
-             # Republish
-             self.l1_pub.publish(transformed_cloud)
+            # Read first point for debugging
+            first_points = list(point_cloud2.read_points(msg, field_names=("x", "y", "z"), skip_nans=True))
+            if len(first_points) > 0:
+                self.get_logger().info(f'L1 BEFORE transform - First point: x={first_points[0][0]:.3f}, y={first_points[0][1]:.3f}, z={first_points[0][2]:.3f}',
+                                      throttle_duration_sec=2.0)
+
+            # Driver extrinsic: roll=-90°, yaw=0°, translation=[0, 110mm, 0]
+            # Driver applies: p_out = R * p_sensor + t
+            # To undo: p_sensor = R^(-1) * (p_out - t)
+            # Step 1: Subtract driver translation [0, 0.110, 0]
+            # Step 2: Apply inverse rotation (roll=+90°, yaw=0°)
+
+            transformed_cloud = self.transform_point_cloud(
+                msg,
+                roll_deg=90.0,    # Inverse of driver's -90°
+                pitch_deg=0.0,
+                yaw_deg=0.0,      # Inverse of driver's 0°
+                trans_x=0.0,      # Driver's translation to subtract
+                trans_y=0.110,    # Driver's 110mm offset to subtract
+                trans_z=0.0
+            )
+
+            # DEBUG: Log after transformation
+            after_points = list(point_cloud2.read_points(transformed_cloud, field_names=("x", "y", "z"), skip_nans=True))
+            if len(after_points) > 0:
+                self.get_logger().info(f'L1 AFTER transform - First point: x={after_points[0][0]:.3f}, y={after_points[0][1]:.3f}, z={after_points[0][2]:.3f}',
+                                      throttle_duration_sec=2.0)
+
+            # Set frame_id to match TF tree
+            transformed_cloud.header.frame_id = self.l1_frame
+            transformed_cloud.header.stamp = msg.header.stamp
+
+            self.get_logger().info(f'L1 OUTPUT - frame_id: {transformed_cloud.header.frame_id}',
+                                  throttle_duration_sec=2.0)
+
+            # Republish
+            self.l1_pub.publish(transformed_cloud)
 
          except Exception as e:
              self.get_logger().error(f'L1 transformation error: {str(e)}')
