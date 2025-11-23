@@ -5,6 +5,9 @@ LiDAR TF Calibration Node for Dual MID-360 Setup
 This node publishes static transforms for the dual Livox MID-360 configuration
 to visualize and verify the extrinsic calibration in RViz.
 
+Additionally, it subscribes to the raw lidar topics and republishes them with
+the correct frame_id to match the TF tree for proper visualization in RViz.
+
 Frame hierarchy:
   base_link (root)
   ├── lidar_L1 (left sensor, 11cm to left, facing forward)
@@ -16,6 +19,7 @@ Author: Generated for FAST-LIO dual sensor calibration
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import TransformStamped
+from sensor_msgs.msg import PointCloud2
 from tf2_ros import StaticTransformBroadcaster
 import math
 
@@ -36,6 +40,10 @@ class LidarTFCalibration(Node):
         self.declare_parameter('l1_frame', 'lidar_L1')
         self.declare_parameter('l2_frame', 'lidar_L2')
 
+        # Declare parameters for lidar topics
+        self.declare_parameter('l1_topic', '/livox/lidar_192_168_1_10')
+        self.declare_parameter('l2_topic', '/livox/lidar_192_168_1_18')
+
         # L1 (Left sensor) extrinsics - facing forward
         self.declare_parameter('l1_x', 0.0)      # meters
         self.declare_parameter('l1_y', 0.11)     # 11cm to the left
@@ -54,8 +62,10 @@ class LidarTFCalibration(Node):
 
         # Get parameter values
         base_frame = self.get_parameter('base_frame').value
-        l1_frame = self.get_parameter('l1_frame').value
-        l2_frame = self.get_parameter('l2_frame').value
+        self.l1_frame = self.get_parameter('l1_frame').value
+        self.l2_frame = self.get_parameter('l2_frame').value
+        l1_topic = self.get_parameter('l1_topic').value
+        l2_topic = self.get_parameter('l2_topic').value
 
         # Publish static transforms
         transforms = []
@@ -63,7 +73,7 @@ class LidarTFCalibration(Node):
         # Transform: base_link -> lidar_L1
         transforms.append(self.create_transform(
             parent_frame=base_frame,
-            child_frame=l1_frame,
+            child_frame=self.l1_frame,
             x=self.get_parameter('l1_x').value,
             y=self.get_parameter('l1_y').value,
             z=self.get_parameter('l1_z').value,
@@ -75,7 +85,7 @@ class LidarTFCalibration(Node):
         # Transform: base_link -> lidar_L2
         transforms.append(self.create_transform(
             parent_frame=base_frame,
-            child_frame=l2_frame,
+            child_frame=self.l2_frame,
             x=self.get_parameter('l2_x').value,
             y=self.get_parameter('l2_y').value,
             z=self.get_parameter('l2_z').value,
@@ -87,13 +97,43 @@ class LidarTFCalibration(Node):
         # Broadcast all transforms
         self.tf_static_broadcaster.sendTransform(transforms)
 
+        # Create subscribers for lidar point clouds
+        self.l1_sub = self.create_subscription(
+            PointCloud2,
+            l1_topic,
+            self.l1_callback,
+            10
+        )
+
+        self.l2_sub = self.create_subscription(
+            PointCloud2,
+            l2_topic,
+            self.l2_callback,
+            10
+        )
+
+        # Create publishers for republished point clouds with correct frame_id
+        self.l1_pub = self.create_publisher(
+            PointCloud2,
+            '/lidar_L1/pointcloud',
+            10
+        )
+
+        self.l2_pub = self.create_publisher(
+            PointCloud2,
+            '/lidar_L2/pointcloud',
+            10
+        )
+
         self.get_logger().info('=' * 60)
         self.get_logger().info('LiDAR TF Calibration Node Started')
         self.get_logger().info('=' * 60)
         self.get_logger().info(f'Base frame: {base_frame}')
         self.get_logger().info('')
         self.get_logger().info('L1 (Left sensor - facing forward):')
-        self.get_logger().info(f'  Frame: {l1_frame}')
+        self.get_logger().info(f'  Frame: {self.l1_frame}')
+        self.get_logger().info(f'  Input Topic: {l1_topic}')
+        self.get_logger().info(f'  Output Topic: /lidar_L1/pointcloud')
         self.get_logger().info(f'  Position: [{self.get_parameter("l1_x").value:.3f}, '
                               f'{self.get_parameter("l1_y").value:.3f}, '
                               f'{self.get_parameter("l1_z").value:.3f}] m')
@@ -102,7 +142,9 @@ class LidarTFCalibration(Node):
                               f'Yaw={self.get_parameter("l1_yaw").value}°')
         self.get_logger().info('')
         self.get_logger().info('L2 (Right sensor - facing backward):')
-        self.get_logger().info(f'  Frame: {l2_frame}')
+        self.get_logger().info(f'  Frame: {self.l2_frame}')
+        self.get_logger().info(f'  Input Topic: {l2_topic}')
+        self.get_logger().info(f'  Output Topic: /lidar_L2/pointcloud')
         self.get_logger().info(f'  Position: [{self.get_parameter("l2_x").value:.3f}, '
                               f'{self.get_parameter("l2_y").value:.3f}, '
                               f'{self.get_parameter("l2_z").value:.3f}] m')
@@ -113,6 +155,7 @@ class LidarTFCalibration(Node):
         self.get_logger().info('Transforms published. Visualize in RViz with:')
         self.get_logger().info('  - Fixed Frame: base_link')
         self.get_logger().info('  - Add TF display to see coordinate frames')
+        self.get_logger().info('  - Subscribe to /lidar_L1/pointcloud and /lidar_L2/pointcloud')
         self.get_logger().info('=' * 60)
 
     def create_transform(self, parent_frame, child_frame, x, y, z, roll, pitch, yaw):
@@ -158,6 +201,48 @@ class LidarTFCalibration(Node):
         t.transform.rotation.z = cr * cp * sy - sr * sp * cy
 
         return t
+
+    def l1_callback(self, msg):
+        """
+        Callback for L1 lidar point cloud.
+        Republishes with correct frame_id to match TF tree.
+        """
+        # Create new message with corrected frame_id
+        corrected_msg = PointCloud2()
+        corrected_msg.header = msg.header
+        corrected_msg.header.frame_id = self.l1_frame
+        corrected_msg.height = msg.height
+        corrected_msg.width = msg.width
+        corrected_msg.fields = msg.fields
+        corrected_msg.is_bigendian = msg.is_bigendian
+        corrected_msg.point_step = msg.point_step
+        corrected_msg.row_step = msg.row_step
+        corrected_msg.data = msg.data
+        corrected_msg.is_dense = msg.is_dense
+
+        # Republish with correct frame_id
+        self.l1_pub.publish(corrected_msg)
+
+    def l2_callback(self, msg):
+        """
+        Callback for L2 lidar point cloud.
+        Republishes with correct frame_id to match TF tree.
+        """
+        # Create new message with corrected frame_id
+        corrected_msg = PointCloud2()
+        corrected_msg.header = msg.header
+        corrected_msg.header.frame_id = self.l2_frame
+        corrected_msg.height = msg.height
+        corrected_msg.width = msg.width
+        corrected_msg.fields = msg.fields
+        corrected_msg.is_bigendian = msg.is_bigendian
+        corrected_msg.point_step = msg.point_step
+        corrected_msg.row_step = msg.row_step
+        corrected_msg.data = msg.data
+        corrected_msg.is_dense = msg.is_dense
+
+        # Republish with correct frame_id
+        self.l2_pub.publish(corrected_msg)
 
 
 def main(args=None):
