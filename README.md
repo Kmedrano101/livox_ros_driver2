@@ -93,11 +93,11 @@ This is the **latest verified working configuration** for dual MID-360 setup.
 | 🔴 **L1 (Lidar 1)** | `192.168.1.10` | First MID-360 sensor |
 | 🔵 **L2 (Lidar 2)** | `192.168.1.18` | Second MID-360 sensor |
 
-> 💡 **Pro Tip - QR Code Identification:**
+> 💡 **Pro Tip - Serial code below QR Identification:**
 >
-> The host part of the IP addresses (`.10` and `.18`) correspond to the **last 2 digits of the QR code** printed on the physical Livox sensor. This helps identify which physical sensor is which:
-> - 📱 Sensor with QR ending in `10` → `192.168.1.10`
-> - 📱 Sensor with QR ending in `18` → `192.168.1.18`
+> The host part of the IP addresses (`.10` and `.18`) correspond to the **last 2 digits of livox' serial code** printed on the physical Livox sensor. This helps identify which physical sensor is which:
+> - 📱 Sensor with Serial ending in `10` → `192.168.1.10`
+> - 📱 Sensor with Serial ending in `18` → `192.168.1.18`
 
 ---
 
