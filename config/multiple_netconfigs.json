@@ -11,13 +11,13 @@
       "log_data_port": 59000
     },
     "host_net_info" : {
-      "cmd_data_ip" : "192.168.1.124",
+      "cmd_data_ip" : "192.168.1.5",
       "cmd_data_port": 56000,
       "push_msg_ip": "",
       "push_msg_port": 0,
-      "point_data_ip": "192.168.1.124",
+      "point_data_ip": "192.168.1.5",
       "point_data_port": 57000,
-      "imu_data_ip" : "192.168.1.124",
+      "imu_data_ip" : "192.168.1.5",
       "imu_data_port": 58000,
       "log_data_ip" : "",
       "log_data_port": 59000
@@ -34,7 +34,7 @@
     "host_net_info": [
         {
             "lidar_ip": ["192.168.1.10"],
-            "host_ip": "192.168.1.124",
+            "host_ip": "192.168.1.5",
             "cmd_data_port": 56101,
             "push_msg_port": 56201,
             "point_data_port": 56301,
@@ -43,7 +43,7 @@
         },
         {
             "lidar_ip": ["192.168.1.18"],
-            "host_ip": "192.168.1.124",
+            "host_ip": "192.168.1.5",
             "cmd_data_port": 56102,
             "push_msg_port": 56202,
             "point_data_port": 56302,
