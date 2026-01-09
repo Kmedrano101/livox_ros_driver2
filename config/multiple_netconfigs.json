@@ -55,7 +55,7 @@
   "lidar_configs" : [
     {
       "ip" : "192.168.1.10",
-      "pcl_data_type" : 1,
+      "pcl_data_type" : 0,
       "pattern_mode" : 0,
       "extrinsic_parameter" : {
         "roll": 90.0,
@@ -68,7 +68,7 @@
     },
     {
       "ip" : "192.168.1.18",
-      "pcl_data_type" : 1,
+      "pcl_data_type" : 0,
       "pattern_mode" : 0,
       "extrinsic_parameter" : {
         "roll": 90.0,
