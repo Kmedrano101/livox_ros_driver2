@@ -32,9 +32,19 @@ DriverNode& DriverNode::GetNode() noexcept {
 }
 
 DriverNode::~DriverNode() {
-  on_deactivate();
-  on_cleanup();
-  on_shutdown();
+  // Safety net: stop threads if on_shutdown was not called
+  active_.store(false);
+  if (lddc_ptr_ && lddc_ptr_->lds_) {
+    lddc_ptr_->lds_->RequestExit();
+    lddc_ptr_->lds_->pcd_semaphore_.Signal();
+    lddc_ptr_->lds_->imu_semaphore_.Signal();
+  }
+  if (pointclouddata_poll_thread_ && pointclouddata_poll_thread_->joinable()) {
+    pointclouddata_poll_thread_->join();
+  }
+  if (imudata_poll_thread_ && imudata_poll_thread_->joinable()) {
+    imudata_poll_thread_->join();
+  }
 }
 
 } // namespace livox_ros

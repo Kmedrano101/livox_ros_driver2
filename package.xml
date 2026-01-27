@@ -12,6 +12,7 @@
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>rclcpp_components</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>

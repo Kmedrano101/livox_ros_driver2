@@ -54,15 +54,9 @@ class DriverNode final : public ros::NodeHandle {
 };
 
 #elif defined BUILDING_ROS2
-class DriverNode final : public rclcpp::Node {
+class DriverNode final : public rclcpp_lifecycle::LifecycleNode {
  public:
-  enum class NodeState {
-    UNCONFIGURED,
-    CONFIGURED,
-    ACTIVE,
-    INACTIVE,
-    SHUTDOWN
-  };
+  using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
 
   explicit DriverNode(const rclcpp::NodeOptions& options);
   DriverNode(const DriverNode &) = delete;
@@ -70,19 +64,17 @@ class DriverNode final : public rclcpp::Node {
   DriverNode &operator=(const DriverNode &) = delete;
 
   DriverNode& GetNode() noexcept;
-  NodeState get_state() const { return node_state_; }
+
+  CallbackReturn on_configure(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_cleanup(const rclcpp_lifecycle::State & previous_state) override;
+  CallbackReturn on_shutdown(const rclcpp_lifecycle::State & previous_state) override;
 
  private:
-  bool on_configure();
-  bool on_activate();
-  bool on_deactivate();
-  bool on_cleanup();
-  bool on_shutdown();
-
   void PointCloudDataPollThread();
   void ImuDataPollThread();
 
-  NodeState node_state_ = NodeState::UNCONFIGURED;
   std::atomic<bool> active_{false};
 
   std::unique_ptr<Lddc> lddc_ptr_;

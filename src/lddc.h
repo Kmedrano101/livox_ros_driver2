@@ -88,7 +88,11 @@ class Lddc final {
 
   uint8_t GetTransferFormat(void) { return transfer_format_; }
   uint8_t IsMultiTopic(void) { return use_multi_topic_; }
+#ifdef BUILDING_ROS1
   void SetRosNode(livox_ros::DriverNode *node) { cur_node_ = node; }
+#elif defined BUILDING_ROS2
+  void SetRosNode(rclcpp_lifecycle::LifecycleNode *node) { cur_node_ = node; }
+#endif
 
   // void SetRosPub(ros::Publisher *pub) { global_pub_ = pub; };  // NOT USED
   void SetPublishFrq(uint32_t frq) { publish_frq_ = frq; }
@@ -156,7 +160,11 @@ class Lddc final {
   PublisherPtr global_imu_pub_;
 #endif
 
+#ifdef BUILDING_ROS1
   livox_ros::DriverNode *cur_node_;
+#elif defined BUILDING_ROS2
+  rclcpp_lifecycle::LifecycleNode *cur_node_;
+#endif
 };
 
 }  // namespace livox_ros
