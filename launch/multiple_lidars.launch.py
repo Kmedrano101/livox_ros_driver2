@@ -13,10 +13,11 @@ def generate_launch_description():
     param_file = os.path.join(pkg_share, 'config', 'livox_params.yaml')
     user_config_path = os.path.join(pkg_share, 'config', 'multiple_netconfigs.json')
 
-    # CRITICAL: Override parameters to ensure multi_topic is enabled
+    # CRITICAL: Override parameters for dual LiDAR with CustomMsg
     params_override = {
         'user_config_path': user_config_path,
-        'multi_topic': 1,  # Force enable separate topics for each LiDAR
+        'multi_topic': 1,      # Force enable separate topics for each LiDAR
+        'xfer_format': 1,      # Force CustomMsg format (not PointCloud2)
     }
 
     livox_driver = Node(
