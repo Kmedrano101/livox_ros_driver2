@@ -690,6 +690,17 @@ std::shared_ptr<rclcpp::PublisherBase> Lddc::GetCurrentImuPublisher(uint8_t hand
 }
 #endif
 
+void Lddc::ResetPublishers() {
+#ifdef BUILDING_ROS2
+  for (uint32_t i = 0; i < kMaxSourceLidar; i++) {
+    private_pub_[i].reset();
+    private_imu_pub_[i].reset();
+  }
+  global_pub_.reset();
+  global_imu_pub_.reset();
+#endif
+}
+
 void Lddc::CreateBagFile(const std::string &file_name) {
 #ifdef BUILDING_ROS1
   if (!bag_) {

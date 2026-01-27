@@ -32,10 +32,9 @@ DriverNode& DriverNode::GetNode() noexcept {
 }
 
 DriverNode::~DriverNode() {
-  lddc_ptr_->lds_->RequestExit();
-  exit_signal_.set_value();
-  pointclouddata_poll_thread_->join();
-  imudata_poll_thread_->join();
+  on_deactivate();
+  on_cleanup();
+  on_shutdown();
 }
 
 } // namespace livox_ros

@@ -27,6 +27,8 @@
 
 #include "include/ros_headers.h"
 
+#include <atomic>
+
 namespace livox_ros {
 
 class Lddc;
@@ -54,22 +56,38 @@ class DriverNode final : public ros::NodeHandle {
 #elif defined BUILDING_ROS2
 class DriverNode final : public rclcpp::Node {
  public:
+  enum class NodeState {
+    UNCONFIGURED,
+    CONFIGURED,
+    ACTIVE,
+    INACTIVE,
+    SHUTDOWN
+  };
+
   explicit DriverNode(const rclcpp::NodeOptions& options);
   DriverNode(const DriverNode &) = delete;
   ~DriverNode();
   DriverNode &operator=(const DriverNode &) = delete;
 
   DriverNode& GetNode() noexcept;
+  NodeState get_state() const { return node_state_; }
 
  private:
+  bool on_configure();
+  bool on_activate();
+  bool on_deactivate();
+  bool on_cleanup();
+  bool on_shutdown();
+
   void PointCloudDataPollThread();
   void ImuDataPollThread();
+
+  NodeState node_state_ = NodeState::UNCONFIGURED;
+  std::atomic<bool> active_{false};
 
   std::unique_ptr<Lddc> lddc_ptr_;
   std::shared_ptr<std::thread> pointclouddata_poll_thread_;
   std::shared_ptr<std::thread> imudata_poll_thread_;
-  std::shared_future<void> future_;
-  std::promise<void> exit_signal_;
 };
 #endif
 

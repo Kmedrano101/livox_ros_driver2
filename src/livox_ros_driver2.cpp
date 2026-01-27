@@ -119,12 +119,34 @@ DriverNode::DriverNode(const rclcpp::NodeOptions & node_options)
 : Node("livox_driver_node", node_options)
 {
   DRIVER_INFO(*this, "Livox Ros Driver2 Version: %s", LIVOX_ROS_DRIVER2_VERSION_STRING);
+  DRIVER_INFO(*this, "[Lifecycle] Initializing DriverNode...");
 
-  /** Init default system parameter */
+  if (!on_configure()) {
+    DRIVER_ERROR(*this, "[Lifecycle] Configuration failed!");
+    throw std::runtime_error("Node configuration failed");
+  }
+
+  if (!on_activate()) {
+    DRIVER_ERROR(*this, "[Lifecycle] Activation failed!");
+    throw std::runtime_error("Node activation failed");
+  }
+
+  DRIVER_INFO(*this, "[Lifecycle] Node fully initialized and active.");
+}
+
+bool DriverNode::on_configure()
+{
+  if (node_state_ != NodeState::UNCONFIGURED) {
+    DRIVER_WARN(*this, "[Lifecycle] on_configure called in invalid state");
+    return false;
+  }
+
+  DRIVER_INFO(*this, "[Lifecycle] Configuring...");
+
   int xfer_format = kPointCloud2Msg;
   int multi_topic = 0;
   int data_src = kSourceRawLidar;
-  double publish_freq = 10.0; /* Hz */
+  double publish_freq = 10.0;
   int output_type = kOutputToRos;
   std::string frame_id;
 
@@ -149,13 +171,8 @@ DriverNode::DriverNode(const rclcpp::NodeOptions & node_options)
     publish_freq = 100.0;
   } else if (publish_freq < 0.5) {
     publish_freq = 0.5;
-  } else {
-    publish_freq = publish_freq;
   }
 
-  future_ = exit_signal_.get_future();
-
-  /** Lidar data distribute control and lidar data source set */
   lddc_ptr_ = std::make_unique<Lddc>(xfer_format, multi_topic, data_src, output_type, publish_freq, frame_id);
   lddc_ptr_->SetRosNode(this);
 
@@ -181,8 +198,85 @@ DriverNode::DriverNode(const rclcpp::NodeOptions & node_options)
     DRIVER_ERROR(*this, "Invalid data src (%d), please check the launch file", data_src);
   }
 
+  node_state_ = NodeState::CONFIGURED;
+  DRIVER_INFO(*this, "[Lifecycle] Configuration complete.");
+  return true;
+}
+
+bool DriverNode::on_activate()
+{
+  if (node_state_ != NodeState::CONFIGURED && node_state_ != NodeState::INACTIVE) {
+    DRIVER_WARN(*this, "[Lifecycle] on_activate called in invalid state");
+    return false;
+  }
+
+  DRIVER_INFO(*this, "[Lifecycle] Activating...");
+
+  active_.store(true);
   pointclouddata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::PointCloudDataPollThread, this);
   imudata_poll_thread_ = std::make_shared<std::thread>(&DriverNode::ImuDataPollThread, this);
+
+  node_state_ = NodeState::ACTIVE;
+  DRIVER_INFO(*this, "[Lifecycle] Node is now ACTIVE.");
+  return true;
+}
+
+bool DriverNode::on_deactivate()
+{
+  if (node_state_ != NodeState::ACTIVE) {
+    return true;
+  }
+
+  DRIVER_INFO(*this, "[Lifecycle] Deactivating...");
+
+  active_.store(false);
+
+  if (lddc_ptr_ && lddc_ptr_->lds_) {
+    lddc_ptr_->lds_->RequestExit();
+  }
+
+  if (pointclouddata_poll_thread_ && pointclouddata_poll_thread_->joinable()) {
+    pointclouddata_poll_thread_->join();
+  }
+  if (imudata_poll_thread_ && imudata_poll_thread_->joinable()) {
+    imudata_poll_thread_->join();
+  }
+  pointclouddata_poll_thread_.reset();
+  imudata_poll_thread_.reset();
+
+  if (lddc_ptr_) {
+    lddc_ptr_->ResetPublishers();
+  }
+
+  node_state_ = NodeState::INACTIVE;
+  DRIVER_INFO(*this, "[Lifecycle] Node is now INACTIVE.");
+  return true;
+}
+
+bool DriverNode::on_cleanup()
+{
+  if (node_state_ == NodeState::ACTIVE) {
+    on_deactivate();
+  }
+
+  DRIVER_INFO(*this, "[Lifecycle] Cleaning up...");
+
+  if (lddc_ptr_) {
+    lddc_ptr_->PrepareExit();
+    lddc_ptr_.reset();
+  }
+
+  node_state_ = NodeState::UNCONFIGURED;
+  DRIVER_INFO(*this, "[Lifecycle] Cleanup complete.");
+  return true;
+}
+
+bool DriverNode::on_shutdown()
+{
+  DRIVER_INFO(*this, "[Lifecycle] Shutting down...");
+  node_state_ = NodeState::SHUTDOWN;
+  DRIVER_INFO(*this, "[Lifecycle] Shutdown complete.");
+  return true;
 }
 
 }  // namespace livox_ros
@@ -195,22 +289,18 @@ RCLCPP_COMPONENTS_REGISTER_NODE(livox_ros::DriverNode)
 
 void DriverNode::PointCloudDataPollThread()
 {
-  std::future_status status;
   std::this_thread::sleep_for(std::chrono::seconds(3));
-  do {
+  while (active_.load()) {
     lddc_ptr_->DistributePointCloudData();
-    status = future_.wait_for(std::chrono::microseconds(0));
-  } while (status == std::future_status::timeout);
+  }
 }
 
 void DriverNode::ImuDataPollThread()
 {
-  std::future_status status;
   std::this_thread::sleep_for(std::chrono::seconds(3));
-  do {
+  while (active_.load()) {
     lddc_ptr_->DistributeImuData();
-    status = future_.wait_for(std::chrono::microseconds(0));
-  } while (status == std::future_status::timeout);
+  }
 }
 
 

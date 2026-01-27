@@ -92,6 +92,7 @@ class Lddc final {
 
   // void SetRosPub(ros::Publisher *pub) { global_pub_ = pub; };  // NOT USED
   void SetPublishFrq(uint32_t frq) { publish_frq_ = frq; }
+  void ResetPublishers();
 
  public:
   Lds *lds_;
