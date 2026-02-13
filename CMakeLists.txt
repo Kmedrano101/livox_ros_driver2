@@ -39,6 +39,7 @@ add_definitions(-DBUILDING_ROS2)
 # find_package(<dependency> REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+find_package(rclcpp_lifecycle REQUIRED)
 find_package(PCL REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
@@ -111,6 +112,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   ${APR_INCLUDE_DIRS}
   ${LIVOX_LIDAR_SDK_INCLUDE_DIR}
   ${LIVOX_INTERFACES_INCLUDE_DIRECTORIES}   # for custom msgs
+  ${rclcpp_lifecycle_INCLUDE_DIRS}
   3rdparty
   src
 )
@@ -125,6 +127,10 @@ target_link_libraries(${PROJECT_NAME}
   ${APR_LIBRARIES}
 )
 
+ament_target_dependencies(${PROJECT_NAME}
+  rclcpp_lifecycle
+)
+
 rclcpp_components_register_node(${PROJECT_NAME}
   PLUGIN "livox_ros::DriverNode"
   EXECUTABLE ${PROJECT_NAME}_node
@@ -134,6 +140,18 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
+
+# Install Python scripts
+install(
+  PROGRAMS scripts/lidar_tf_calibration.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install RViz config directory
+install(
+  DIRECTORY rviz_cfg
+  DESTINATION share/${PROJECT_NAME}
+)
 
 ament_auto_package(INSTALL_TO_SHARE
   config

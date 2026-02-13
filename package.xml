@@ -12,6 +12,7 @@
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <depend>rclcpp</depend>
+  <depend>rclcpp_lifecycle</depend>
   <depend>rclcpp_components</depend>
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
@@ -19,6 +20,11 @@
   <depend>pcl_conversions</depend>
   <depend>rcl_interfaces</depend>
   <depend>libpcl-all-dev</depend>
+
+  <!-- Dependencies for lidar_tf_calibration.py -->
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
 
   <exec_depend>rosbag2</exec_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>
