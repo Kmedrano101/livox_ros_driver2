@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
 namespace livox_ros
 {
 DriverNode::DriverNode(const rclcpp::NodeOptions & node_options)
-: rclcpp_lifecycle::LifecycleNode("livox_driver_node", node_options)
+: rclcpp_lifecycle::LifecycleNode("livox_driver", node_options)
 {
   DRIVER_INFO(*this, "Livox Ros Driver2 Version: %s", LIVOX_ROS_DRIVER2_VERSION_STRING);
   DRIVER_INFO(*this, "[Lifecycle] DriverNode created (unconfigured). Declaring parameters...");

@@ -23,7 +23,7 @@ def generate_launch_description():
     livox_driver = Node(
         package='livox_ros_driver2',
         executable='livox_ros_driver2_node',
-        name='livox_lidar_publisher',
+        name='livox_driver',
         output='screen',
         parameters=[param_file, params_override]
     )
